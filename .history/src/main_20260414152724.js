@@ -28,7 +28,7 @@ function calculateBonusByProfit(index, total, seller) {
     } else {
         percent = 5;
     }
-    return Math.round((seller.profit * percent) / 100 * 100) / 100;
+    return (seller.profit * percent) / 100;
 }
 
 /**
@@ -38,7 +38,7 @@ function calculateBonusByProfit(index, total, seller) {
  * @returns {{revenue, top_products, bonus, name, sales_count, profit, seller_id}[]}
  */
 function analyzeSalesData(data, options) {
-    // ===== ПРОВЕРКИ =====
+    // ===== ПРОВЕРКИ (как в предыдущих версиях) =====
     if (!data) {
         throw new Error('Ошибка: параметр data не передан или равен null/undefined');
     }

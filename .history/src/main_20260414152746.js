@@ -28,7 +28,7 @@ function calculateBonusByProfit(index, total, seller) {
     } else {
         percent = 5;
     }
-    return Math.round((seller.profit * percent) / 100 * 100) / 100;
+    return (seller.profit * percent) / 100;
 }
 
 /**
