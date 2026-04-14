@@ -28,6 +28,7 @@ function calculateBonusByProfit(index, total, seller) {
     } else {
         percent = 5;
     }
+    // Возвращаем сумму бонуса в рублях
     return (seller.profit * percent) / 100;
 }
 
