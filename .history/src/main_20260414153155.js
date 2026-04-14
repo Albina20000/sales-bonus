@@ -73,95 +73,10 @@ function analyzeSalesData(data, options) {
         throw new Error('Ошибка: в data отсутствует коллекция purchase_records или она пуста');
     }
     
-    // // ===== ИНИЦИАЛИЗАЦИЯ =====
-    // const sellersMap = new Map();
-    // sellers.forEach(seller => {
-    //     sellersMap.set(seller.id, {
-    //         seller_id: seller.id,
-    //         name: `${seller.first_name} ${seller.last_name}`,
-    //         revenue: 0,
-    //         profit: 0,
-    //         sales_count: 0,
-    //         products_sold: {},
-    //         total_cost: 0
-    //     });
-    // });
-    
-    // const productsMap = new Map();
-    // products.forEach(product => {
-    //     productsMap.set(product.sku, product);
-    // });
-    
-    // // ===== ОБРАБОТКА ЧЕКОВ =====
-    // for (const receipt of purchase_records) {
-    //     const seller = sellersMap.get(receipt.seller_id);
-    //     if (!seller) continue;
-        
-    //     seller.sales_count++;
-        
-    //     for (const item of receipt.items) {
-    //         const product = productsMap.get(item.sku);
-    //         if (!product) continue;
-            
-    //         // Выручка (уже округлена до 2 знаков)
-    //         const revenue = calculateRevenue(item, product);
-            
-    //         // Себестоимость (округляем до 2 знаков)
-    //         const cost = Math.round(product.purchase_price * item.quantity * 100) / 100;
-            
-    //         // Накопление с округлением
-    //         seller.revenue = Math.round((seller.revenue + revenue) * 100) / 100;
-    //         seller.total_cost = Math.round((seller.total_cost + cost) * 100) / 100;
-            
-    //         if (!seller.products_sold[item.sku]) {
-    //             seller.products_sold[item.sku] = 0;
-    //         }
-    //         seller.products_sold[item.sku] += item.quantity;
-    //     }
-    // }
-    
-    // // ===== РАСЧЁТ ПРИБЫЛИ =====
-    // for (const seller of sellersMap.values()) {
-    //     seller.profit = Math.round((seller.revenue - seller.total_cost) * 100) / 100;
-    // }
-    
-    // // ===== СОРТИРОВКА =====
-    // const sellersList = Array.from(sellersMap.values());
-    // sellersList.sort((a, b) => b.profit - a.profit);
-    
-    // // ===== ФОРМИРОВАНИЕ РЕЗУЛЬТАТА =====
-    // const total = sellersList.length;
-    
-    // return sellersList.map((seller, index) => {
-    //     const topProducts = Object.entries(seller.products_sold)
-    //         .map(([sku, quantity]) => ({ sku, quantity }))
-    //         .sort((a, b) => b.quantity - a.quantity)
-    //         .slice(0, 10);
-        
-    //     // calculateBonus возвращает сумму бонуса в рублях
-    //     const bonus = calculateBonus(index, total, seller);
-        
-    //     return {
-    //         seller_id: seller.seller_id,
-    //         name: seller.name,
-    //         revenue: seller.revenue,
-    //         profit: seller.profit,
-    //         sales_count: seller.sales_count,
-    //         top_products: topProducts,
-    //         bonus: Math.round(bonus * 100) / 100
-    //     };
-    // });
-
-    // Индексы
-    const productsMap = new Map();
-    products.forEach(product => {
-        productsMap.set(product.sku, product);
-    });
-    
-    // Статистика продавцов
-    const sellersStats = new Map();
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
+    const sellersMap = new Map();
     sellers.forEach(seller => {
-        sellersStats.set(seller.id, {
+        sellersMap.set(seller.id, {
             seller_id: seller.id,
             name: `${seller.first_name} ${seller.last_name}`,
             revenue: 0,
@@ -172,9 +87,14 @@ function analyzeSalesData(data, options) {
         });
     });
     
-    // Обработка чеков (БЕЗ ПРОМЕЖУТОЧНОГО ОКРУГЛЕНИЯ)
+    const productsMap = new Map();
+    products.forEach(product => {
+        productsMap.set(product.sku, product);
+    });
+    
+    // ===== ОБРАБОТКА ЧЕКОВ =====
     for (const receipt of purchase_records) {
-        const seller = sellersStats.get(receipt.seller_id);
+        const seller = sellersMap.get(receipt.seller_id);
         if (!seller) continue;
         
         seller.sales_count++;
@@ -183,12 +103,15 @@ function analyzeSalesData(data, options) {
             const product = productsMap.get(item.sku);
             if (!product) continue;
             
-            // НЕТ округления здесь
+            // Выручка (уже округлена до 2 знаков)
             const revenue = calculateRevenue(item, product);
-            const cost = product.purchase_price * item.quantity;
             
-            seller.revenue += revenue;
-            seller.total_cost += cost;
+            // Себестоимость (округляем до 2 знаков)
+            const cost = Math.round(product.purchase_price * item.quantity * 100) / 100;
+            
+            // Накопление с округлением
+            seller.revenue = Math.round((seller.revenue + revenue) * 100) / 100;
+            seller.total_cost = Math.round((seller.total_cost + cost) * 100) / 100;
             
             if (!seller.products_sold[item.sku]) {
                 seller.products_sold[item.sku] = 0;
@@ -197,16 +120,16 @@ function analyzeSalesData(data, options) {
         }
     }
     
-    // Расчёт прибыли (БЕЗ промежуточного округления)
-    for (const seller of sellersStats.values()) {
-        seller.profit = seller.revenue - seller.total_cost;
+    // ===== РАСЧЁТ ПРИБЫЛИ =====
+    for (const seller of sellersMap.values()) {
+        seller.profit = Math.round((seller.revenue - seller.total_cost) * 100) / 100;
     }
     
-    // Сортировка
-    const sellersList = Array.from(sellersStats.values());
+    // ===== СОРТИРОВКА =====
+    const sellersList = Array.from(sellersMap.values());
     sellersList.sort((a, b) => b.profit - a.profit);
     
-    // Формирование результата (округление ТОЛЬКО здесь)
+    // ===== ФОРМИРОВАНИЕ РЕЗУЛЬТАТА =====
     const total = sellersList.length;
     
     return sellersList.map((seller, index) => {
@@ -215,13 +138,14 @@ function analyzeSalesData(data, options) {
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
+        // calculateBonus возвращает сумму бонуса в рублях
         const bonus = calculateBonus(index, total, seller);
         
         return {
             seller_id: seller.seller_id,
             name: seller.name,
-            revenue: Math.round(seller.revenue * 100) / 100,
-            profit: Math.round(seller.profit * 100) / 100,
+            revenue: seller.revenue,
+            profit: seller.profit,
             sales_count: seller.sales_count,
             top_products: topProducts,
             bonus: Math.round(bonus * 100) / 100
