@@ -121,6 +121,7 @@ function analyzeSalesData(data, options) {
     });
     
     // ===== СОРТИРУЕМ ПРОДАВЦОВ ПО ПРИБЫЛИ =====
+     // Исправленная сортировка:
     const sortedSellerStats = sellerStats.slice().sort((a, b) => b.profit - a.profit);
     
     // Формирование результата (упрощённо, без лишнего округления в промежутках):

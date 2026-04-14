@@ -121,14 +121,15 @@ function analyzeSalesData(data, options) {
     });
     
     // ===== СОРТИРУЕМ ПРОДАВЦОВ ПО ПРИБЫЛИ =====
-    const sortedSellerStats = sellerStats.slice().sort((a, b) => b.profit - a.profit);
+    const sortedSellerStats = sellerStats.toSorted((a, b) => b.profit - a.profit);
     
-    // Формирование результата (упрощённо, без лишнего округления в промежутках):
+    // ===== ШАГ 4: ФОРМИРОВАНИЕ ИТОГОВОГО ОТЧЁТА =====
     const total = sortedSellerStats.length;
     
     return sortedSellerStats.map((seller, index) => {
-        // Рассчитываем сумму бонуса (уже в рублях)
-        const bonus = calculateBonus(index, total, seller);
+        // Рассчитываем бонус
+        const bonusPercent = calculateBonus(index, total, seller);
+        const bonus = seller.profit * bonusPercent / 100;
         
         // Формируем топ-10 продуктов
         const topProducts = Object.entries(seller.products_sold)
@@ -136,6 +137,7 @@ function analyzeSalesData(data, options) {
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
+        // Возвращаем отформатированный результат
         return {
             seller_id: seller.seller_id,
             name: seller.name,
@@ -143,7 +145,7 @@ function analyzeSalesData(data, options) {
             profit: +seller.profit.toFixed(2),
             sales_count: seller.sales_count,
             top_products: topProducts,
-            bonus: +bonus.toFixed(2)  // бонус уже в рублях, только округляем
+            bonus: +bonus.toFixed(2)
         };
     });
 }
