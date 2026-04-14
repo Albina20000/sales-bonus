@@ -84,6 +84,9 @@ function analyzeSalesData(data, options) {
         
         seller.sales_count++;
         
+        let receiptRevenue = 0;
+        let receiptCost = 0;
+        
         record.items.forEach(item => {
             const product = productIndex[item.sku];
             
@@ -91,48 +94,40 @@ function analyzeSalesData(data, options) {
                 return;
             }
             
-            // Расчёт выручки через переданную функцию (уже округлена)
+            const cost = product.purchase_price * item.quantity;
+            receiptCost += cost;
+            
             const revenue = calculateRevenue(item, product);
-            seller.revenue += revenue;
+            receiptRevenue += revenue;
             
-            // Расчёт себестоимости с округлением
-            const cost = +(product.purchase_price * item.quantity).toFixed(2);
-            seller.total_cost += cost;
+            seller.profit += (revenue - cost);
             
-            // Учёт количества проданных товаров
             if (!seller.products_sold[item.sku]) {
                 seller.products_sold[item.sku] = 0;
             }
             seller.products_sold[item.sku] += item.quantity;
         });
+        
+        seller.revenue += receiptRevenue;
+        seller.total_cost += receiptCost;
     });
     
-    // ===== РАСЧЁТ ПРИБЫЛИ С ОКРУГЛЕНИЕМ =====
-    sellerStats.forEach(seller => {
-        seller.profit = +(seller.revenue - seller.total_cost).toFixed(2);
-    });
+    // ===== СОРТИРУЕМ ПРОДАВЦОВ ПО ПРИБЫЛИ =====
+    const sortedSellerStats = sellerStats.slice().sort((a, b) => b.profit - a.profit);
     
-    // ===== СОРТИРОВКА ПРОДАВЦОВ ПО ПРИБЫЛИ =====
-    const sortedSellerStats = [...sellerStats].sort((a, b) => b.profit - a.profit);
-    
-    // ===== ФОРМИРОВАНИЕ ИТОГОВОГО ОТЧЁТА =====
+    // Формирование результата (упрощённо, без лишнего округления в промежутках):
     const total = sortedSellerStats.length;
     
     return sortedSellerStats.map((seller, index) => {
-        // Расчёт бонуса (calculateBonus возвращает сумму в рублях)
-        const bonusAmount = calculateBonus(index, total, {
-            profit: seller.profit,
-            seller_id: seller.seller_id,
-            name: seller.name
-        });
+        // Рассчитываем сумму бонуса (уже в рублях)
+        const bonus = calculateBonus(index, total, seller);
         
-        // Формирование топ-10 продуктов
+        // Формируем топ-10 продуктов
         const topProducts = Object.entries(seller.products_sold)
             .map(([sku, quantity]) => ({ sku, quantity }))
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
-        // Возврат отформатированного результата
         return {
             seller_id: seller.seller_id,
             name: seller.name,
@@ -140,7 +135,7 @@ function analyzeSalesData(data, options) {
             profit: +seller.profit.toFixed(2),
             sales_count: seller.sales_count,
             top_products: topProducts,
-            bonus: +bonusAmount.toFixed(2)
+            bonus: +bonus.toFixed(2)  // бонус уже в рублях, только округляем
         };
     });
 }
