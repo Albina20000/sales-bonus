@@ -97,15 +97,13 @@ function analyzeSalesData(data, options) {
                 return;
             }
             
-            // Расчёт выручки через переданную функцию (уже округлена до 2 знаков)
+            // Расчёт выручки через переданную функцию (уже округлена)
             const revenue = calculateRevenue(item, product);
+            seller.revenue += revenue;
             
-            // Расчёт себестоимости с округлением до 2 знаков
+            // Расчёт себестоимости с округлением
             const cost = +(product.purchase_price * item.quantity).toFixed(2);
-            
-            // Обновляем revenue и total_cost с округлением на каждом шаге
-            seller.revenue = +(seller.revenue + revenue).toFixed(2);
-            seller.total_cost = +(seller.total_cost + cost).toFixed(2);
+            seller.total_cost += cost;
             
             // Учёт количества проданных товаров
             if (!seller.products_sold[item.sku]) {
@@ -144,8 +142,8 @@ function analyzeSalesData(data, options) {
         return {
             seller_id: seller.seller_id,
             name: seller.name,
-            revenue: seller.revenue,
-            profit: seller.profit,
+            revenue: +seller.revenue.toFixed(2),
+            profit: +seller.profit.toFixed(2),
             sales_count: seller.sales_count,
             top_products: topProducts,
             bonus: +bonusAmount.toFixed(2)
