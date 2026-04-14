@@ -55,13 +55,13 @@ function analyzeSalesData(data, options) {
         throw new Error('Чего-то не хватает');
     }
     
-    // ===== ПОДГОТОВКА ПРОМЕЖУТОЧНЫХ ДАННЫХ (в копейках) =====
+    // ===== ПОДГОТОВКА ПРОМЕЖУТОЧНЫХ ДАННЫХ =====
     const sellerStats = data.sellers.map(seller => ({
         seller_id: seller.id,
         name: `${seller.first_name} ${seller.last_name}`,
-        revenue_kop: 0,  // в копейках (целое число)
-        profit_kop: 0,
-        total_cost_kop: 0,
+        revenue: 0,
+        profit: 0,
+        total_cost: 0,
         sales_count: 0,
         products_sold: {}
     }));
@@ -92,16 +92,15 @@ function analyzeSalesData(data, options) {
                 return;
             }
             
-            // Получаем выручку в рублях и переводим в копейки
-            const revenue_rub = calculateRevenue(item, product);
-            const revenue_kop = Math.round(revenue_rub * 100);
+            // Получаем выручку (уже округлена до 2 знаков)
+            const revenue = calculateRevenue(item, product);
             
-            // Себестоимость в копейках
-            const cost_kop = Math.round(product.purchase_price * item.quantity * 100);
+            // Себестоимость (округляем до 2 знаков)
+            const cost = Math.round(product.purchase_price * item.quantity * 100) / 100;
             
-            // Накопление в копейках (целые числа, нет погрешности)
-            seller.revenue_kop += revenue_kop;
-            seller.total_cost_kop += cost_kop;
+            // Накопление с использованием целых чисел (копеек)
+            seller.revenue = Math.round((seller.revenue + revenue) * 100) / 100;
+            seller.total_cost = Math.round((seller.total_cost + cost) * 100) / 100;
             
             // Учёт количества проданных товаров
             if (!seller.products_sold[item.sku]) {
@@ -111,28 +110,24 @@ function analyzeSalesData(data, options) {
         });
     });
     
-    // ===== РАСЧЁТ ПРИБЫЛИ В КОПЕЙКАХ =====
+    // ===== РАСЧЁТ ПРИБЫЛИ С ОКРУГЛЕНИЕМ =====
     sellerStats.forEach(seller => {
-        seller.profit_kop = seller.revenue_kop - seller.total_cost_kop;
+        seller.profit = Math.round((seller.revenue - seller.total_cost) * 100) / 100;
     });
     
     // ===== СОРТИРОВКА ПРОДАВЦОВ ПО ПРИБЫЛИ =====
-    const sortedSellerStats = [...sellerStats].sort((a, b) => b.profit_kop - a.profit_kop);
+    const sortedSellerStats = [...sellerStats].sort((a, b) => b.profit - a.profit);
     
     // ===== ФОРМИРОВАНИЕ ИТОГОВОГО ОТЧЁТА =====
     const total = sortedSellerStats.length;
     
     return sortedSellerStats.map((seller, index) => {
-        // Переводим из копеек в рубли для передачи в calculateBonus
-        const sellerForBonus = {
-            profit: seller.profit_kop / 100,
+        // Расчёт бонуса (calculateBonus возвращает сумму в рублях)
+        const bonusAmount = calculateBonus(index, total, {
+            profit: seller.profit,
             seller_id: seller.seller_id,
             name: seller.name
-        };
-        
-        // Расчёт бонуса в рублях, затем в копейки
-        const bonus_rub = calculateBonus(index, total, sellerForBonus);
-        const bonus_kop = Math.round(bonus_rub * 100);
+        });
         
         // Формирование топ-10 продуктов
         const topProducts = Object.entries(seller.products_sold)
@@ -140,15 +135,15 @@ function analyzeSalesData(data, options) {
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
-        // Возврат результата (переводим копейки обратно в рубли)
+        // Возврат отформатированного результата
         return {
             seller_id: seller.seller_id,
             name: seller.name,
-            revenue: seller.revenue_kop / 100,
-            profit: seller.profit_kop / 100,
+            revenue: Math.round(seller.revenue * 100) / 100,
+            profit: Math.round(seller.profit * 100) / 100,
             sales_count: seller.sales_count,
             top_products: topProducts,
-            bonus: bonus_kop / 100
+            bonus: Math.round(bonusAmount * 100) / 100
         };
     });
 }
