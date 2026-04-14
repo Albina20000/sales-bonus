@@ -19,10 +19,16 @@ function calculateSimpleRevenue(purchase, _product) {
  */
 function calculateBonusByProfit(index, total, seller) {
     let percent;
-    if (index === 0) percent = 15;
-    else if (index === 1 || index === 2) percent = 10;
-    else if (index === total - 1) percent = 0;
-    else percent = 5;
+    if (index === 0) {
+        percent = 15;
+    } else if (index === 1 || index === 2) {
+        percent = 10;
+    } else if (index === total - 1) {
+        percent = 0;
+    } else {
+        percent = 5;
+    }
+    // Возвращаем сумму бонуса в рублях, а не проценты
     return (seller.profit * percent) / 100;
 }
 
