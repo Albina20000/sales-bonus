@@ -39,60 +39,28 @@ function calculateBonusByProfit(index, total, seller) {
  * @returns {{revenue, top_products, bonus, name, sales_count, profit, seller_id}[]}
  */
 function analyzeSalesData(data, options) {
-    // Проверки
-    if (!data) {
-        throw new Error('Ошибка: параметр data не передан или равен null/undefined');
-    }
-    if (!options) {
-        throw new Error('Ошибка: параметр options не передан или равен null/undefined');
-    }
+    // ===== ПРОВЕРКИ (как в оригинале) =====
+    if (!data) throw new Error('Ошибка: параметр data не передан или равен null/undefined');
+    if (!options) throw new Error('Ошибка: параметр options не передан или равен null/undefined');
     
     const { calculateRevenue, calculateBonus } = options;
-    
-    if (!calculateRevenue) {
-        throw new Error('Ошибка: в options не передана функция calculateRevenue');
-    }
-    if (typeof calculateRevenue !== 'function') {
-        throw new Error('Ошибка: calculateRevenue должна быть функцией');
-    }
-    if (!calculateBonus) {
-        throw new Error('Ошибка: в options не передана функция calculateBonus');
-    }
-    if (typeof calculateBonus !== 'function') {
-        throw new Error('Ошибка: calculateBonus должна быть функцией');
-    }
+    if (!calculateRevenue) throw new Error('Ошибка: в options не передана функция calculateRevenue');
+    if (typeof calculateRevenue !== 'function') throw new Error('Ошибка: calculateRevenue должна быть функцией');
+    if (!calculateBonus) throw new Error('Ошибка: в options не передана функция calculateBonus');
+    if (typeof calculateBonus !== 'function') throw new Error('Ошибка: calculateBonus должна быть функцией');
     
     const { sellers, products, purchase_records } = data;
+    if (!sellers) throw new Error('Ошибка: в data отсутствует коллекция sellers');
+    if (!products) throw new Error('Ошибка: в data отсутствует коллекция products');
+    if (!purchase_records) throw new Error('Ошибка: в data отсутствует коллекция purchase_records');
+    if (!Array.isArray(sellers)) throw new Error('Ошибка: sellers должен быть массивом');
+    if (!Array.isArray(products)) throw new Error('Ошибка: products должен быть массивом');
+    if (!Array.isArray(purchase_records)) throw new Error('Ошибка: purchase_records должен быть массивом');
+    if (sellers.length === 0) throw new Error('Ошибка: массив sellers пуст');
+    if (products.length === 0) throw new Error('Ошибка: массив products пуст');
+    if (purchase_records.length === 0) throw new Error('Ошибка: массив purchase_records пуст');
     
-    if (!sellers) {
-        throw new Error('Ошибка: в data отсутствует коллекция sellers');
-    }
-    if (!products) {
-        throw new Error('Ошибка: в data отсутствует коллекция products');
-    }
-    if (!purchase_records) {
-        throw new Error('Ошибка: в data отсутствует коллекция purchase_records');
-    }
-    if (!Array.isArray(sellers)) {
-        throw new Error('Ошибка: sellers должен быть массивом');
-    }
-    if (!Array.isArray(products)) {
-        throw new Error('Ошибка: products должен быть массивом');
-    }
-    if (!Array.isArray(purchase_records)) {
-        throw new Error('Ошибка: purchase_records должен быть массивом');
-    }
-    if (sellers.length === 0) {
-        throw new Error('Ошибка: массив sellers пуст');
-    }
-    if (products.length === 0) {
-        throw new Error('Ошибка: массив products пуст');
-    }
-    if (purchase_records.length === 0) {
-        throw new Error('Ошибка: массив purchase_records пуст');
-    }
-    
-    // Индексы
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
     const sellersMap = new Map();
     sellers.forEach(seller => {
         sellersMap.set(seller.id, {
@@ -111,7 +79,7 @@ function analyzeSalesData(data, options) {
         productsMap.set(product.sku, product);
     });
     
-    // Обработка чеков
+    // ===== ОБРАБОТКА ЧЕКОВ (БЕЗ ПРОМЕЖУТОЧНОГО ОКРУГЛЕНИЯ) =====
     for (const receipt of purchase_records) {
         const seller = sellersMap.get(receipt.seller_id);
         if (!seller) continue;
@@ -122,12 +90,15 @@ function analyzeSalesData(data, options) {
             const product = productsMap.get(item.sku);
             if (!product) continue;
             
+            // Выручка (уже округлена внутри calculateRevenue)
             const revenue = calculateRevenue(item, product);
-            const cost = product.purchase_price * item.quantity;
-            
             seller.revenue += revenue;
+            
+            // Себестоимость
+            const cost = product.purchase_price * item.quantity;
             seller.total_cost += cost;
             
+            // Подсчёт товаров
             if (!seller.products_sold[item.sku]) {
                 seller.products_sold[item.sku] = 0;
             }
@@ -135,27 +106,30 @@ function analyzeSalesData(data, options) {
         }
     }
     
-    // Расчёт прибыли
+    // ===== РАСЧЁТ ПРИБЫЛИ =====
     for (const seller of sellersMap.values()) {
         seller.profit = seller.revenue - seller.total_cost;
     }
     
-    // Сортировка
+    // ===== СОРТИРОВКА =====
     const sellersList = Array.from(sellersMap.values());
     sellersList.sort((a, b) => b.profit - a.profit);
     
-    // Формирование результата
+    // ===== ФОРМИРОВАНИЕ РЕЗУЛЬТАТА =====
     const total = sellersList.length;
     
     return sellersList.map((seller, index) => {
+        // Топ-10 товаров
         const topProducts = Object.entries(seller.products_sold)
             .map(([sku, quantity]) => ({ sku, quantity }))
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
-        // calculateBonus уже возвращает сумму бонуса
-        const bonus = calculateBonus(index, total, seller);
+        // Бонус
+        const bonusPercent = calculateBonus(index, total, seller);
+        const bonus = (seller.profit * bonusPercent) / 100;
         
+        // Округление ТОЛЬКО в конце
         return {
             seller_id: seller.seller_id,
             name: seller.name,
