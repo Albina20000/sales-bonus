@@ -1,0 +1,2 @@
+eturn seller.profit * percent;
+}
