@@ -5,9 +5,8 @@
  * @returns {number}
  */
 function calculateSimpleRevenue(purchase, _product) {
-    const discountDecimal = purchase.discount / 100;
-    // Возвращаем БЕЗ округления
-    return purchase.sale_price * purchase.quantity * (1 - discountDecimal);
+    const revenue = purchase.sale_price * purchase.quantity * (1 - purchase.discount / 100);
+    return Number(revenue.toFixed(2));
 }
 
 /**

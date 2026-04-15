@@ -73,7 +73,7 @@ function analyzeSalesData(data, options) {
         productsMap.set(product.sku, product);
     });
     
-    // ===== ИНИЦИАЛИЗАЦИЯ СТАТИСТИКИ ПРОДАВЦОВ =====
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
     const sellersMap = new Map();
     sellers.forEach(seller => {
         sellersMap.set(seller.id, {
@@ -87,7 +87,7 @@ function analyzeSalesData(data, options) {
         });
     });
     
-    // ===== ОБРАБОТКА ЧЕКОВ (БЕЗ ПРОМЕЖУТОЧНОГО ОКРУГЛЕНИЯ) =====
+    // ===== ОБРАБОТКА ЧЕКОВ =====
     for (const receipt of purchase_records) {
         const seller = sellersMap.get(receipt.seller_id);
         if (!seller) continue;
@@ -98,12 +98,11 @@ function analyzeSalesData(data, options) {
             const product = productsMap.get(item.sku);
             if (!product) continue;
             
-            // НЕТ ОКРУГЛЕНИЯ - calculateRevenue возвращает число без округления
-            const revenue = calculateRevenue(item, product);
-            // НЕТ ОКРУГЛЕНИЯ себестоимости
+            // revenue округляем (так как calculateRevenue может возвращать неточные значения)
+            const revenue = Number(calculateRevenue(item, product).toFixed(2));
+            // cost НЕ округляем
             const cost = product.purchase_price * item.quantity;
             
-            // НЕТ ОКРУГЛЕНИЯ при накоплении
             seller.revenue += revenue;
             seller.total_cost += cost;
             
@@ -114,7 +113,7 @@ function analyzeSalesData(data, options) {
         }
     }
     
-    // ===== РАСЧЁТ ПРИБЫЛИ (БЕЗ ОКРУГЛЕНИЯ) =====
+    // ===== РАСЧЁТ ПРИБЫЛИ =====
     for (const seller of sellersMap.values()) {
         seller.profit = seller.revenue - seller.total_cost;
     }
@@ -123,7 +122,7 @@ function analyzeSalesData(data, options) {
     const sellersList = Array.from(sellersMap.values());
     sellersList.sort((a, b) => b.profit - a.profit);
     
-    // ===== ФОРМИРОВАНИЕ РЕЗУЛЬТАТА (ОКРУГЛЕНИЕ ТОЛЬКО ЗДЕСЬ) =====
+    // ===== ФОРМИРОВАНИЕ РЕЗУЛЬТАТА =====
     const total = sellersList.length;
     
     return sellersList.map((seller, index) => {
@@ -132,9 +131,7 @@ function analyzeSalesData(data, options) {
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
-        // calculateBonus возвращает ПРОЦЕНТ (15, 10, 5, 0)
         const bonusPercent = calculateBonus(index, total, seller);
-        // Вычисляем сумму бонуса (БЕЗ округления)
         const bonusAmount = (seller.profit * bonusPercent) / 100;
         
         return {
